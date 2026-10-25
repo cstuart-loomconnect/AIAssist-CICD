@@ -56,9 +56,11 @@ jobs:
           apex=$(find "$SRC" -name '*.cls' -o -name '*.trigger' | head -1)
           lwc=$(find "$SRC" -path '*/lwc/*' -name '*.js' -not -path '*/__tests__/*' | head -1)
           source=$(find "$SRC" -type f -not -name '.gitkeep' | head -1)
-          echo "has_apex=$([ -n "$apex" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "has_lwc=$([ -n "$lwc" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "has_source=$([ -n "$source" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          {
+            echo "has_apex=$([ -n "$apex" ] && echo true || echo false)"
+            echo "has_lwc=$([ -n "$lwc" ] && echo true || echo false)"
+            echo "has_source=$([ -n "$source" ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
 
   format-and-lint:
     name: Prettier + ESLint (LWC/Aura)

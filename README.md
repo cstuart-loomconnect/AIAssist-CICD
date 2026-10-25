@@ -11,7 +11,7 @@ Shared GitHub Actions workflows for the [AIAssist](https://github.com/cstuart-lo
 | `.github/workflows/pr-hygiene.yml` | Reusable. Labels the PR by area and checks the title is `type: subject` with a lowercase subject. |
 | `.github/workflows/nightly.yml` | Reusable. Scratch org test run against a branch; opens an issue in the package repo if it fails. |
 | `.github/workflows/self-check.yml` | Runs on this repo: lints the workflow YAML and syntax-checks the scripts. |
-| `scripts/` | `check-naming.js`, `check-coverage.js`, `assign-permsets.js`, `pr-comment.js`. |
+| `scripts/` | `check-naming.js`, `check-coverage.js`, `assign-permsets.js`, `pr-comment.js`, and `actionlint-annotations.js` for the self-check. |
 | `config/` | `code-analyzer.yml`, `labeler.yml`, `naming-exceptions.txt`. |
 
 Each reusable workflow checks out the calling repo at the root and this repo into `.cicd/`, so the scripts and config here run against the package's `force-app` folder.
