@@ -1,7 +1,8 @@
 name: Scratch Org Apex Tests
 
 # Reusable: creates a scratch org, deploys the calling repo's source, runs all local Apex tests,
-# enforces coverage and deletes the org. Called by pr-validation.yml and nightly.yml.
+# enforces coverage, then runs the browser tests in e2e/ (when the repo has them) in the same org,
+# and deletes the org. Called by pr-validation.yml and nightly.yml.
 on:
   workflow_call:
     inputs:
@@ -21,6 +22,10 @@ on:
         description: Minimum org-wide Apex coverage (%)
         type: number
         default: 75
+      e2e:
+        description: Run the Playwright browser tests in e2e/ after the Apex tests, when the repo has them
+        type: boolean
+        default: true
     secrets:
       DEVHUB_SFDX_AUTH_URL:
         required: true
@@ -117,6 +122,46 @@ jobs:
         with:
           name: apex-test-results
           path: test-results/
+          if-no-files-found: ignore
+
+      # Browser tests: only after the Apex tests passed, and only when the repo has an e2e/ suite.
+      - name: Look for browser tests
+        id: e2e
+        if: success() && inputs.e2e
+        run: |
+          if [ -f e2e/playwright.config.ts ]; then
+            echo "has_e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_e2e=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Playwright
+        if: steps.e2e.outputs.has_e2e == 'true'
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        if: steps.e2e.outputs.has_e2e == 'true'
+        working-directory: e2e
+        env:
+          SF_TARGET_ORG: ${{ env.ORG_ALIAS }}
+        run: |
+          # A one-time login link for the scratch org. Masked so it never shows in the log.
+          url=$(sf org open --url-only --target-org "$ORG_ALIAS" --json | jq -r .result.url)
+          echo "::add-mask::$url"
+          sid=$(printf '%s' "$url" | sed -n 's/.*[?&]sid=\([^&]*\).*/\1/p')
+          [ -n "$sid" ] && echo "::add-mask::$sid"
+          SF_FRONTDOOR_URL="$url" npx playwright test
+
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.e2e.outputs.has_e2e == 'true'
+        with:
+          name: e2e-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
           if-no-files-found: ignore
 
       - name: Delete scratch org

@@ -29,6 +29,10 @@ on:
         description: Minimum org-wide Apex coverage (%)
         type: number
         default: 75
+      e2e:
+        description: Run the Playwright browser tests in e2e/ after the Apex tests, when the repo has them
+        type: boolean
+        default: true
     secrets:
       DEVHUB_SFDX_AUTH_URL:
         required: true
@@ -189,6 +193,7 @@ jobs:
       cicd-ref: ${{ inputs.cicd-ref }}
       source-dir: ${{ inputs.source-dir }}
       coverage: ${{ inputs.coverage }}
+      e2e: ${{ inputs.e2e }}
     secrets:
       DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
 
