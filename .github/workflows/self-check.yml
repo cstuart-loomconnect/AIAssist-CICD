@@ -14,13 +14,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Lint workflows
-        run: |
-          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-          # One annotation per finding, so problems show on the PR's Files tab.
-          ./actionlint -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}{{"\n"}}{{end}}'
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      - name: Lint workflows
+        # actionlint's JSON output is turned into one annotation per finding.
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -format '{{json .}}' > actionlint.json || true
+          node -e '
+            const text = require("fs").readFileSync("actionlint.json", "utf8").trim();
+            const errors = text ? JSON.parse(text) : [];
+            for (const e of errors) console.log(`::error file=${e.filepath},line=${e.line},col=${e.column}::[${e.kind}] ${e.message}`);
+            console.log(`${errors.length} actionlint finding(s)`);
+            process.exit(errors.length ? 1 : 0);
+          '
       - name: Syntax-check scripts
         run: for f in scripts/*.js; do node --check "$f"; done
