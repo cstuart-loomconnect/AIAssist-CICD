@@ -86,9 +86,11 @@ jobs:
         run: sf project deploy start --dry-run --source-dir "$SRC" --test-level NoTestRun --wait 30
 
       - name: Deploy source
+        id: deploy
         run: sf project deploy start --source-dir "$SRC" --wait 30
 
       - name: Assign permission sets
+        id: permsets
         run: node .cicd/scripts/assign-permsets.js "$SRC"
 
       - name: Look for Apex tests
@@ -124,10 +126,11 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
 
-      # Browser tests: only after the Apex tests passed, and only when the repo has an e2e/ suite.
+      # Browser tests: whenever the source deployed, even if an Apex test failed, so one result never
+      # hides the other. Only when the repo has an e2e/ suite.
       - name: Look for browser tests
         id: e2e
-        if: success() && inputs.e2e
+        if: always() && inputs.e2e && steps.deploy.outcome == 'success' && steps.permsets.outcome == 'success'
         run: |
           if [ -f e2e/playwright.config.ts ]; then
             echo "has_e2e=true" >> "$GITHUB_OUTPUT"
