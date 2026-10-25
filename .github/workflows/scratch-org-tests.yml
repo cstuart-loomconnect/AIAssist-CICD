@@ -1,0 +1,124 @@
+name: Scratch Org Apex Tests
+
+# Reusable: creates a scratch org, deploys the calling repo's source, runs all local Apex tests,
+# enforces coverage and deletes the org. Called by pr-validation.yml and nightly.yml.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Branch or SHA of the calling repo to test (defaults to the calling workflow's ref)
+        type: string
+        default: ''
+      cicd-ref:
+        description: Ref of AIAssist-CICD to load scripts from
+        type: string
+        default: v1
+      source-dir:
+        description: Package source folder to deploy
+        type: string
+        default: force-app
+      coverage:
+        description: Minimum org-wide Apex coverage (%)
+        type: number
+        default: 75
+    secrets:
+      DEVHUB_SFDX_AUTH_URL:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  scratch-org-tests:
+    name: Scratch org + Apex tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ORG_ALIAS: ci-${{ github.run_id }}-${{ github.run_attempt }}
+      SRC: ${{ inputs.source-dir }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/checkout@v7
+        with:
+          repository: cstuart-loomconnect/AIAssist-CICD
+          ref: ${{ inputs.cicd-ref }}
+          path: .cicd
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm install --global @salesforce/cli
+
+      - name: Authenticate Dev Hub
+        env:
+          DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
+        run: |
+          test -n "$DEVHUB_SFDX_AUTH_URL" || { echo "::error::Missing DEVHUB_SFDX_AUTH_URL secret"; exit 1; }
+          # Tolerate stray quotes, spaces and line breaks from pasting, then keep only the URL itself.
+          url=$(printf '%s' "$DEVHUB_SFDX_AUTH_URL" | tr -d '[:space:]"'"'" | grep -o 'force://.*' || true)
+          if [ -z "$url" ]; then
+            len=${#DEVHUB_SFDX_AUTH_URL}
+            echo "::error::DEVHUB_SFDX_AUTH_URL does not contain a force:// URL (secret length: $len characters). Generate it with: sf org auth show-sfdx-auth-url --target-org <devhub> --no-prompt"
+            exit 1
+          fi
+          case "$url" in *"@"*) ;; *) echo "::error::Auth URL is missing the @<instanceUrl> part (length: ${#url})"; exit 1;; esac
+          echo "Auth URL format looks valid (length: ${#url} characters)"
+          printf '%s' "$url" > devhub.txt
+          sf org login sfdx-url --sfdx-url-file devhub.txt --alias devhub --set-default-dev-hub
+          rm devhub.txt
+
+      - name: Create scratch org
+        run: |
+          sf org create scratch \
+            --definition-file config/project-scratch-def.json \
+            --alias "$ORG_ALIAS" \
+            --duration-days 1 \
+            --set-default \
+            --wait 15
+
+      - name: Validate deploy (check-only)
+        run: sf project deploy start --dry-run --source-dir "$SRC" --test-level NoTestRun --wait 30
+
+      - name: Deploy source
+        run: sf project deploy start --source-dir "$SRC" --wait 30
+
+      - name: Assign permission sets
+        run: node .cicd/scripts/assign-permsets.js "$SRC"
+
+      - name: Look for Apex tests
+        id: tests
+        run: |
+          if grep -rIlis --include='*.cls' '@istest' "$SRC" | head -1 | grep -q .; then
+            echo "has_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_tests=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No Apex test classes (@IsTest) found, so no tests were run and coverage was not checked."
+          fi
+
+      - name: Run Apex tests
+        if: steps.tests.outputs.has_tests == 'true'
+        run: |
+          mkdir -p test-results
+          sf apex run test \
+            --test-level RunLocalTests \
+            --code-coverage \
+            --result-format json \
+            --output-dir test-results \
+            --wait 45
+
+      # Only when tests actually produced results; otherwise the earlier failure is the real error.
+      - name: Enforce coverage
+        if: always() && steps.tests.outputs.has_tests == 'true' && hashFiles('test-results/*.json') != ''
+        run: node .cicd/scripts/check-coverage.js test-results ${{ inputs.coverage }}
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: apex-test-results
+          path: test-results/
+          if-no-files-found: ignore
+
+      - name: Delete scratch org
+        if: always()
+        run: sf org delete scratch --target-org "$ORG_ALIAS" --no-prompt || true

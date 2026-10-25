@@ -1,0 +1,25 @@
+name: Self check
+
+# Checks this repo's own changes, since every package build depends on them.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Lint workflows
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Syntax-check scripts
+        run: for f in scripts/*.js; do node --check "$f"; done

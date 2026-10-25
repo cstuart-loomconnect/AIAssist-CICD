@@ -1,0 +1,72 @@
+name: Nightly Build
+
+# Reusable. Full scratch org Apex test run against a branch of the package repo, so Salesforce
+# release changes, expired dependencies and flaky tests surface before anyone merges. Opens (or
+# comments on) an issue in the package repo when it fails.
+#
+# The schedule itself has to live in the package repo, and scheduled workflows only run from
+# that repo's default branch.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Branch of the package repo to test
+        type: string
+        default: development
+      cicd-ref:
+        description: Ref of AIAssist-CICD to load scripts from
+        type: string
+        default: v1
+    secrets:
+      DEVHUB_SFDX_AUTH_URL:
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      has_apex: ${{ steps.scan.outputs.has_apex }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - id: scan
+        run: |
+          apex=$(find force-app -name '*.cls' -o -name '*.trigger' | head -1)
+          echo "has_apex=$([ -n "$apex" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  tests:
+    needs: detect
+    if: needs.detect.outputs.has_apex == 'true'
+    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@v1
+    with:
+      ref: ${{ inputs.ref }}
+      cicd-ref: ${{ inputs.cicd-ref }}
+    secrets:
+      DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
+
+  report-failure:
+    needs: tests
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v9
+        env:
+          REF: ${{ inputs.ref }}
+        with:
+          script: |
+            const title = `Nightly build failing on ${process.env.REF}`;
+            const body = `The nightly build failed: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const { data: open } = await github.rest.issues.listForRepo({ ...context.repo, state: 'open', per_page: 100 });
+            const existing = open.find((i) => i.title === title && !i.pull_request);
+            if (existing) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ ...context.repo, title, body });
+            }

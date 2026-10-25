@@ -1,0 +1,13 @@
+# Salesforce Code Analyzer v5 configuration
+# https://developer.salesforce.com/docs/platform/salesforce-code-analyzer/guide/config-custom.html
+config_root: null
+log_level: 3
+rules:
+  eslint: {}
+  pmd: {}
+  regex: {}
+  retire-js: {}
+  sfge: {}
+engines:
+  eslint:
+    disable_lwc_base_config: false
