@@ -22,6 +22,10 @@ on:
         description: Minimum org-wide Apex coverage (%)
         type: number
         default: 75
+      apex-tests:
+        description: Run all local Apex tests and enforce coverage. Turn off for a browser-tests-only run.
+        type: boolean
+        default: true
       e2e:
         description: Run the Playwright browser tests in e2e/ after the Apex tests, when the repo has them
         type: boolean
@@ -95,8 +99,13 @@ jobs:
 
       - name: Look for Apex tests
         id: tests
+        env:
+          RUN_APEX: ${{ inputs.apex-tests }}
         run: |
-          if grep -rIlis --include='*.cls' '@istest' "$SRC" | head -1 | grep -q .; then
+          if [ "$RUN_APEX" != "true" ]; then
+            echo "has_tests=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Apex tests switched off for this run (apex-tests: false)."
+          elif grep -rIlis --include='*.cls' '@istest' "$SRC" | head -1 | grep -q .; then
             echo "has_tests=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_tests=false" >> "$GITHUB_OUTPUT"

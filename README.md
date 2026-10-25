@@ -7,7 +7,7 @@ Shared GitHub Actions workflows for the [AIAssist](https://github.com/cstuart-lo
 | Path | What it is |
 |---|---|
 | `.github/workflows/pr-validation.yml` | Reusable. Every check for a pull request between branches: Prettier + ESLint, SLDS lint, Salesforce Code Analyzer, npm audit, naming conventions, then a scratch org deploy with all local Apex tests and a coverage gate. Posts one results comment on the PR. |
-| `.github/workflows/scratch-org-tests.yml` | Reusable. Creates a scratch org, deploys, assigns permission sets, runs `RunLocalTests` and enforces coverage. If the calling repo has an `e2e/` Playwright suite, it also runs those browser tests in the same org whenever the deploy succeeded (input `e2e`, on by default) and attaches the report as `e2e-report`. Deletes the org at the end. Called by the two workflows either side of it. |
+| `.github/workflows/scratch-org-tests.yml` | Reusable. Creates a scratch org, deploys, assigns permission sets, runs `RunLocalTests` and enforces coverage. If the calling repo has an `e2e/` Playwright suite, it also runs those browser tests in the same org whenever the deploy succeeded (input `e2e`, on by default) and attaches the report as `e2e-report`. Set `apex-tests: false` for a browser-tests-only run. Deletes the org at the end. Called by the two workflows either side of it. |
 | `.github/workflows/pr-hygiene.yml` | Reusable. Labels the PR by area and checks the title is `type: subject` with a lowercase subject. |
 | `.github/workflows/nightly.yml` | Reusable. Scratch org test run against a branch; opens an issue in the package repo if it fails. |
 | `.github/workflows/self-check.yml` | Runs on this repo: lints the workflow YAML and syntax-checks the scripts. |
@@ -32,6 +32,20 @@ jobs:
 ```
 
 `cicd-ref` must match the `@ref` in `uses:`. GitHub loads the workflow file from the `@ref`, but the scripts and config are checked out separately, so both need to point at the same version.
+
+## Browser tests on their own
+
+AIAssist's `browser-tests.yml` calls `scratch-org-tests.yml` directly with `apex-tests: false`, so it creates a scratch org, deploys and runs only the Playwright suite:
+
+```yaml
+jobs:
+  browser-tests:
+    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@v1
+    with:
+      cicd-ref: v1
+      apex-tests: false
+    secrets: inherit
+```
 
 ## Releasing a change
 
