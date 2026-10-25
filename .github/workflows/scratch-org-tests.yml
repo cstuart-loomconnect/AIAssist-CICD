@@ -39,7 +39,7 @@ permissions:
 
 jobs:
   scratch-org-tests:
-    name: Scratch org + Apex tests
+    name: ${{ inputs.apex-tests && 'Scratch org + Apex tests' || 'Scratch org + browser tests' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
