@@ -35,11 +35,13 @@ jobs:
 
 ## Releasing a change
 
-Callers pin `@v1`, so a change here does nothing to the package repo until the tag moves.
+Callers pin `@v1`, which is a **branch** here (GitHub resolves `@v1` to a branch or a tag). A change on `main` does nothing to the package repo until `v1` moves.
 
-1. Open a PR here and merge it into `main` once `self-check` passes.
-2. Move the tag: `git tag -f v1 && git push -f origin v1`.
-3. For a breaking change (a new required input or secret, a renamed workflow), tag `v2` instead and update the callers in AIAssist, plus the nested `@v1` references inside `pr-validation.yml` and `nightly.yml`.
+1. Open a PR here into `main` and merge it once `self-check` passes.
+2. Release it by bringing `v1` up to `main`: `git checkout v1 && git merge --ff-only main && git push origin v1`.
+3. For a breaking change (a new required input or secret, a renamed workflow), create a `v2` branch from `main` instead, and update the callers in AIAssist plus the nested `@v1` references inside `pr-validation.yml` and `nightly.yml`.
+
+Don't also create a `v1` tag: a branch and a tag with the same name make the reference ambiguous.
 
 ## One-off setup
 

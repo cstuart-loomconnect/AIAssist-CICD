@@ -181,7 +181,7 @@ jobs:
     needs: [detect, format-and-lint, code-analyzer, dependency-audit, naming-conventions]
     # Skip if a prerequisite was skipped for lack of source; fail if one failed.
     if: needs.detect.outputs.has_apex == 'true' && !cancelled() && !contains(needs.*.result, 'failure')
-    # Nested calls must name the repo and ref in full; move this tag with the release tag.
+    # Nested calls must name the repo and ref in full; keep this in step with the release branch.
     uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@v1
     with:
       cicd-ref: ${{ inputs.cicd-ref }}
