@@ -2,7 +2,8 @@ name: Scratch Org Apex Tests
 
 # Reusable: creates a scratch org, deploys the calling repo's source, runs all local Apex tests,
 # enforces coverage, then runs the browser tests in e2e/ (when the repo has them) in the same org,
-# and deletes the org. Called by pr-validation.yml and nightly.yml.
+# and deletes the org. Apex and browser tests share the one org, so the org is only created and
+# deployed once. Called by pr-validation.yml and weekly-build.yml.
 on:
   workflow_call:
     inputs:
@@ -39,7 +40,7 @@ permissions:
 
 jobs:
   scratch-org-tests:
-    name: ${{ inputs.apex-tests && 'Scratch org + Apex tests' || 'Scratch org + browser tests' }}
+    name: ${{ inputs.apex-tests && 'Scratch org + Apex and browser tests' || 'Scratch org + browser tests' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -85,9 +86,6 @@ jobs:
             --duration-days 1 \
             --set-default \
             --wait 15
-
-      - name: Validate deploy (check-only)
-        run: sf project deploy start --dry-run --source-dir "$SRC" --test-level NoTestRun --wait 30
 
       - name: Deploy source
         id: deploy

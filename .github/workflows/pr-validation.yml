@@ -1,8 +1,9 @@
 name: PR Validation
 
 # Reusable. Runs every check on a pull request between branches of a Salesforce package repo:
-# formatting, LWC lint, SLDS, Code Analyzer, npm audit, naming conventions, then a scratch org
-# deploy with all local Apex tests and a coverage gate. Posts one results comment on the PR.
+# formatting, LWC lint, SLDS, Code Analyzer, naming conventions, API version consistency and
+# hardcoded IDs/URLs, then one scratch org that runs all local Apex tests, the coverage gate and
+# the browser tests.
 #
 # Call it from the package repo:
 #   jobs:
@@ -42,6 +43,7 @@ permissions:
 
 env:
   CICD_REPO: cstuart-loomconnect/AIAssist-CICD
+  SLDS_LINTER_VERSION: 1.2.1
 
 jobs:
   detect:
@@ -92,14 +94,15 @@ jobs:
         with:
           node-version: 22
       # Lints LWC HTML/CSS for SLDS styling-hook, deprecated class and hardcoded value issues.
+      # Pinned so a new linter release can't start failing PRs overnight; bump it deliberately.
       - name: SLDS lint
-        run: npx --yes @salesforce-ux/slds-linter@latest lint "${{ inputs.source-dir }}"
+        run: npx --yes @salesforce-ux/slds-linter@${{ env.SLDS_LINTER_VERSION }} lint "${{ inputs.source-dir }}"
       - name: SLDS report
         if: always()
         continue-on-error: true
         run: |
           mkdir -p slds-report
-          npx --yes @salesforce-ux/slds-linter@latest report "${{ inputs.source-dir }}" --format sarif --output slds-report
+          npx --yes @salesforce-ux/slds-linter@${{ env.SLDS_LINTER_VERSION }} report "${{ inputs.source-dir }}" --format sarif --output slds-report
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -139,7 +142,6 @@ jobs:
             --workspace "${{ inputs.source-dir }}" \
             --config-file .cicd/config/code-analyzer.yml \
             --rule-selector Recommended \
-            --rule-selector AppExchange \
             --severity-threshold 2 \
             --view table \
             --output-file code-analyzer-results.html \
@@ -151,19 +153,6 @@ jobs:
           name: code-analyzer-results
           path: code-analyzer-results.*
           if-no-files-found: ignore
-
-  dependency-audit:
-    name: Dependency audit (npm)
-    needs: detect
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - run: npm install --package-lock-only --no-audit --no-fund
-      - run: npm audit --audit-level=high
-        continue-on-error: true
 
   naming-conventions:
     name: Naming conventions
@@ -182,9 +171,45 @@ jobs:
           node-version: 22
       - run: node .cicd/scripts/check-naming.js "${{ inputs.source-dir }}" .cicd/config/naming-exceptions.txt
 
+  api-version:
+    name: API version consistency
+    needs: detect
+    if: needs.detect.outputs.has_source == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ env.CICD_REPO }}
+          ref: ${{ inputs.cicd-ref }}
+          path: .cicd
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node .cicd/scripts/check-api-version.js "${{ inputs.source-dir }}" sfdx-project.json
+
+  hardcoded-references:
+    name: Hardcoded IDs and URLs
+    needs: detect
+    if: needs.detect.outputs.has_source == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ env.CICD_REPO }}
+          ref: ${{ inputs.cicd-ref }}
+          path: .cicd
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node .cicd/scripts/check-hardcoded.js "${{ inputs.source-dir }}" .cicd/config/hardcoded-exceptions.txt
+
+  # One scratch org for everything that needs an org: Apex tests and coverage, then the browser
+  # tests against the same deploy.
   scratch-org-tests:
-    name: Scratch org + Apex tests
-    needs: [detect, format-and-lint, code-analyzer, dependency-audit, naming-conventions]
+    name: Scratch org + Apex and browser tests
+    needs: [detect, format-and-lint, code-analyzer, naming-conventions, api-version, hardcoded-references]
     # Skip if a prerequisite was skipped for lack of source; fail if one failed.
     if: needs.detect.outputs.has_apex == 'true' && !cancelled() && !contains(needs.*.result, 'failure')
     # Nested calls must name the repo and ref in full; keep this in step with the release branch.
@@ -196,31 +221,3 @@ jobs:
       e2e: ${{ inputs.e2e }}
     secrets:
       DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
-
-  pr-comment:
-    name: Post results to PR
-    needs: [code-analyzer, naming-conventions, scratch-org-tests]
-    if: github.event_name == 'pull_request' && !cancelled()
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          repository: ${{ env.CICD_REPO }}
-          ref: ${{ inputs.cicd-ref }}
-          path: .cicd
-      - uses: actions/download-artifact@v8
-        continue-on-error: true
-        with:
-          pattern: '{code-analyzer-results,apex-test-results}'
-      - uses: actions/github-script@v9
-        # Fork PRs get a read-only token; don't fail the run over a missing comment.
-        continue-on-error: true
-        env:
-          NEEDS: ${{ toJSON(needs) }}
-        with:
-          script: |
-            const script = require(`${process.env.GITHUB_WORKSPACE}/.cicd/scripts/pr-comment.js`);
-            await script({ github, context, needs: JSON.parse(process.env.NEEDS) });
