@@ -17,7 +17,7 @@ on:
       cicd-ref:
         description: Ref of AIAssist-CICD to load scripts from
         type: string
-        default: v1
+        default: master
     secrets:
       DEVHUB_SFDX_AUTH_URL:
         required: true
@@ -43,7 +43,7 @@ jobs:
   tests:
     needs: detect
     if: needs.detect.outputs.has_apex == 'true'
-    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@v1
+    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@master
     with:
       ref: ${{ inputs.ref }}
       cicd-ref: ${{ inputs.cicd-ref }}
