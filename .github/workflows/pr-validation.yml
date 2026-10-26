@@ -8,9 +8,9 @@ name: PR Validation
 # Call it from the package repo:
 #   jobs:
 #     validate:
-#       uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/pr-validation.yml@v1
+#       uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/pr-validation.yml@master
 #       with:
-#         cicd-ref: v1
+#         cicd-ref: master
 #       secrets: inherit
 #
 # The workflow checks out the calling repo at the root and this repo into .cicd, so the
@@ -21,7 +21,7 @@ on:
       cicd-ref:
         description: Ref of AIAssist-CICD to load scripts and config from. Keep it the same as the @ref in `uses:`.
         type: string
-        default: v1
+        default: master
       source-dir:
         description: Package source folder to check
         type: string
@@ -213,7 +213,7 @@ jobs:
     # Skip if a prerequisite was skipped for lack of source; fail if one failed.
     if: needs.detect.outputs.has_apex == 'true' && !cancelled() && !contains(needs.*.result, 'failure')
     # Nested calls must name the repo and ref in full; keep this in step with the release branch.
-    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@v1
+    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@master
     with:
       cicd-ref: ${{ inputs.cicd-ref }}
       source-dir: ${{ inputs.source-dir }}

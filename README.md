@@ -36,9 +36,9 @@ on:
     branches: [development, master]
 jobs:
   validate:
-    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/pr-validation.yml@v1
+    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/pr-validation.yml@master
     with:
-      cicd-ref: v1
+      cicd-ref: master
     secrets: inherit
 ```
 
@@ -51,22 +51,20 @@ PR validation and the weekly build already run the browser tests in the same scr
 ```yaml
 jobs:
   browser-tests:
-    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@v1
+    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@master
     with:
-      cicd-ref: v1
+      cicd-ref: master
       apex-tests: false
     secrets: inherit
 ```
 
-## Releasing a change
+## Branches and releasing a change
 
-Callers pin `@v1`, which is a **branch** here (GitHub resolves `@v1` to a branch or a tag). A change on `main` does nothing to the package repo until `v1` moves.
+Callers in AIAssist use `@master`, so `master` is the released version and anything merged into it is live for AIAssist straight away. `development` is where changes land first.
 
-1. Open a PR here into `main` and merge it once `self-check` passes.
-2. Release it by bringing `v1` up to `main`: `git checkout v1 && git merge --ff-only main && git push origin v1`.
-3. For a breaking change (a new required input or secret, a renamed workflow), create a `v2` branch from `main` instead, and update the callers in AIAssist plus the nested `@v1` references inside `pr-validation.yml` and `weekly-build.yml`.
-
-Don't also create a `v1` tag: a branch and a tag with the same name make the reference ambiguous.
+1. Branch from `development`, open a PR into `development` and merge it once `self-check` passes.
+2. Release by opening a PR from `development` into `master` and merging it.
+3. For a breaking change (a new required input or secret, a renamed workflow), update the callers in AIAssist in step with the merge into `master`. The nested `scratch-org-tests.yml@master` references inside `pr-validation.yml` and `weekly-build.yml` also always load from `master`, so test a change to `scratch-org-tests.yml` from a feature branch by pointing those at that branch temporarily.
 
 ## One-off setup
 

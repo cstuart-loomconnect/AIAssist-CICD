@@ -14,7 +14,7 @@ on:
       cicd-ref:
         description: Ref of AIAssist-CICD to load scripts from
         type: string
-        default: v1
+        default: master
       source-dir:
         description: Package source folder to deploy
         type: string
