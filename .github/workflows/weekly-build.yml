@@ -1,11 +1,12 @@
-name: Nightly Build
+name: Weekly Build
 
-# Reusable. Full scratch org Apex test run against a branch of the package repo, so Salesforce
-# release changes, expired dependencies and flaky tests surface before anyone merges. Opens (or
-# comments on) an issue in the package repo when it fails.
+# Reusable. Full scratch org run (Apex tests, coverage and browser tests in one org) against a
+# branch of the package repo, so Salesforce release changes, expired dependencies and flaky tests
+# surface before anyone merges. Opens (or comments on) an issue in the package repo when it fails.
 #
-# The schedule itself has to live in the package repo, and scheduled workflows only run from
-# that repo's default branch.
+# Weekly rather than nightly: each run uses one of the Dev Hub's daily scratch org creations.
+# The schedule itself has to live in the package repo (for example cron: '0 2 * * 1', 2am every
+# Monday), and scheduled workflows only run from that repo's default branch.
 on:
   workflow_call:
     inputs:
@@ -61,8 +62,8 @@ jobs:
           REF: ${{ inputs.ref }}
         with:
           script: |
-            const title = `Nightly build failing on ${process.env.REF}`;
-            const body = `The nightly build failed: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = `Weekly build failing on ${process.env.REF}`;
+            const body = `The weekly build failed: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const { data: open } = await github.rest.issues.listForRepo({ ...context.repo, state: 'open', per_page: 100 });
             const existing = open.find((i) => i.title === title && !i.pull_request);
             if (existing) {

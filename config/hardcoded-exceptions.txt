@@ -1,0 +1,2 @@
+# Paths (substring match) that are exempt from scripts/check-hardcoded.js.
+# One per line. Explain why in a comment above each entry.
