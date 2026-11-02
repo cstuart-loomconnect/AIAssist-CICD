@@ -15,6 +15,10 @@ name: PR Validation
 #
 # The workflow checks out the calling repo at the root and this repo into .cicd, so the
 # scripts and config in this repo run against the package's force-app folder.
+#
+# DEVHUB_SFDX_AUTH_URL is optional. A Dependabot pull request is not given the repo's Actions
+# secrets, so when it is missing every check still runs except the scratch org tests, which
+# are skipped with a notice. This keeps the Dev Hub login away from dependency updates.
 on:
   workflow_call:
     inputs:
@@ -36,7 +40,8 @@ on:
         default: true
     secrets:
       DEVHUB_SFDX_AUTH_URL:
-        required: true
+        # Optional: without it the scratch org tests are skipped (see the note at the top).
+        required: false
 
 permissions:
   contents: read
@@ -53,6 +58,7 @@ jobs:
       has_apex: ${{ steps.scan.outputs.has_apex }}
       has_lwc: ${{ steps.scan.outputs.has_lwc }}
       has_source: ${{ steps.scan.outputs.has_source }}
+      has_devhub: ${{ steps.devhub.outputs.has_devhub }}
     steps:
       - uses: actions/checkout@v7
       - id: scan
@@ -67,6 +73,17 @@ jobs:
             echo "has_lwc=$([ -n "$lwc" ] && echo true || echo false)"
             echo "has_source=$([ -n "$source" ] && echo true || echo false)"
           } >> "$GITHUB_OUTPUT"
+      # Secrets cannot be read in a job's if, so whether the Dev Hub login was passed in is worked out here.
+      - id: devhub
+        env:
+          DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
+        run: |
+          if [ -n "$DEVHUB_SFDX_AUTH_URL" ]; then
+            echo "has_devhub=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_devhub=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No DEVHUB_SFDX_AUTH_URL secret was passed in (a Dependabot pull request is not given the repo's Actions secrets), so the scratch org tests are skipped. Every other check still runs."
+          fi
 
   format-and-lint:
     name: Prettier + ESLint (LWC/Aura)
@@ -210,8 +227,8 @@ jobs:
   scratch-org-tests:
     name: Scratch org + Apex and browser tests
     needs: [detect, format-and-lint, code-analyzer, naming-conventions, api-version, hardcoded-references]
-    # Skip if a prerequisite was skipped for lack of source; fail if one failed.
-    if: needs.detect.outputs.has_apex == 'true' && !cancelled() && !contains(needs.*.result, 'failure')
+    # Skip if a prerequisite was skipped for lack of source, or no Dev Hub login was passed in; fail if one failed.
+    if: needs.detect.outputs.has_apex == 'true' && needs.detect.outputs.has_devhub == 'true' && !cancelled() && !contains(needs.*.result, 'failure')
     # Nested calls must name the repo and ref in full; keep this in step with the release branch.
     uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@master
     with:
