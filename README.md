@@ -2,6 +2,8 @@
 
 Shared GitHub Actions workflows for the [LoomConnectAI](https://github.com/cstuart-loomconnect/LoomConnectAI) Salesforce package. The package repo keeps only thin caller workflows; everything that actually runs lives here.
 
+This repo was called `AIAssist-CICD`, and the package repo `AIAssist`, until the product was renamed from AI Assist to LoomConnect AI. GitHub redirects the old URLs, but every `uses:` and `repository:` reference should use the new names.
+
 ## What is in here
 
 | Path | What it is |
@@ -69,7 +71,7 @@ Callers in LoomConnectAI use `@master`, so `master` is the released version and 
 
 ## One-off setup
 
-- **Visibility.** A public repo can only call reusable workflows from a public repo. LoomConnectAI is public, so this repo must be public too. If you make LoomConnectAI private, this one can be private as well; then go to **Settings > Actions > General > Access** here and allow access from your other repositories.
+- **Visibility.** LoomConnectAI is private, and a private repo can call reusable workflows from this public one. To make this repo private as well, go to **Settings > Actions > General > Access** here and allow access from repositories owned by `cstuart-loomconnect`, or LoomConnectAI's checks stop running. If LoomConnectAI is ever made public again, this repo has to be public too.
 - **Secret.** The scratch org jobs need `DEVHUB_SFDX_AUTH_URL` in the **calling** repo (LoomConnectAI), created with `sf org auth show-sfdx-auth-url --target-org <devhub> --no-prompt`. Callers pass it with `secrets: inherit`.
 - **Required checks.** To block merges on failures, add the PR Validation jobs as required status checks in LoomConnectAI's branch protection for `development` and `master`.
 
