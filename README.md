@@ -6,7 +6,7 @@ Shared GitHub Actions workflows for the [AIAssist](https://github.com/cstuart-lo
 
 | Path | What it is |
 |---|---|
-| `.github/workflows/pr-validation.yml` | Reusable. Every check for a pull request between branches: Prettier + ESLint, SLDS lint, Salesforce Code Analyzer, naming conventions, API version consistency and hardcoded IDs/URLs, then one scratch org that runs all local Apex tests, the coverage gate and the browser tests. |
+| `.github/workflows/pr-validation.yml` | Reusable. Every check for a pull request between branches: Prettier + ESLint, LWC Jest tests, SLDS lint, Salesforce Code Analyzer, naming conventions, API version consistency and hardcoded IDs/URLs, then one scratch org that runs all local Apex tests, the coverage gate and the browser tests. |
 | `.github/workflows/scratch-org-tests.yml` | Reusable. Creates a scratch org, deploys, assigns permission sets, runs `RunLocalTests` and enforces coverage. If the calling repo has an `e2e/` Playwright suite, it then runs those browser tests in the **same org** whenever the deploy succeeded (input `e2e`, on by default), so the org is created and deployed once, and attaches the report as `e2e-report`. Set `apex-tests: false` for a browser-tests-only run. Deletes the org at the end. Called by the two workflows either side of it. |
 | `.github/workflows/weekly-build.yml` | Reusable. Scratch org run (Apex and browser tests) against a branch; opens an issue in the package repo if it fails. Weekly, because each run uses one of the Dev Hub's daily scratch org creations. |
 | `.github/workflows/self-check.yml` | Runs on this repo: lints the workflow YAML and syntax-checks the scripts. |
@@ -18,6 +18,7 @@ Shared GitHub Actions workflows for the [AIAssist](https://github.com/cstuart-lo
 | Check | Fails when |
 |---|---|
 | Prettier + ESLint | Files aren't formatted, or LWC/Aura JavaScript has lint errors. |
+| LWC Jest tests | A Jest test in an LWC `__tests__` folder fails. Runs the calling repo's own `sfdx-lwc-jest` with coverage, attached as `lwc-jest-coverage`. A repo with no tests yet passes. |
 | SLDS Validator | LWC HTML/CSS breaks SLDS rules. The linter version is pinned in `SLDS_LINTER_VERSION`; bump it deliberately. |
 | Salesforce Code Analyzer | A High (severity 2) or worse finding from the `Recommended` rules, including CRUD/FLS and SOQL injection. |
 | Naming conventions | An API name has underscores, spaces or the wrong case. |
