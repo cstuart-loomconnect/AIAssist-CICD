@@ -1,7 +1,7 @@
 name: PR Validation
 
 # Reusable. Runs every check on a pull request between branches of a Salesforce package repo:
-# formatting, LWC lint, SLDS, Code Analyzer, naming conventions, API version consistency and
+# formatting, LWC lint, LWC Jest tests, SLDS, Code Analyzer, naming conventions, API version consistency and
 # hardcoded IDs/URLs, then one scratch org that runs all local Apex tests, the coverage gate and
 # the browser tests.
 #
@@ -99,6 +99,29 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run prettier:verify
       - run: npx eslint "${{ inputs.source-dir }}/**/{aura,lwc}/**/*.js" --no-error-on-unmatched-pattern
+
+  # Runs the LWC Jest tests (__tests__ folders) through the repo's own sfdx-lwc-jest, with coverage.
+  # A repo with components but no tests yet passes, so adding this job breaks no caller.
+  lwc-jest:
+    name: LWC Jest tests
+    needs: detect
+    if: needs.detect.outputs.has_lwc == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - name: Run Jest
+        run: npx sfdx-lwc-jest --coverage -- --ci --passWithNoTests
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lwc-jest-coverage
+          path: coverage/
+          if-no-files-found: ignore
 
   slds-validator:
     name: SLDS Validator
@@ -226,7 +249,7 @@ jobs:
   # tests against the same deploy.
   scratch-org-tests:
     name: Scratch org + Apex and browser tests
-    needs: [detect, format-and-lint, code-analyzer, naming-conventions, api-version, hardcoded-references]
+    needs: [detect, format-and-lint, lwc-jest, code-analyzer, naming-conventions, api-version, hardcoded-references]
     # Skip if a prerequisite was skipped for lack of source, or no Dev Hub login was passed in; fail if one failed.
     if: needs.detect.outputs.has_apex == 'true' && needs.detect.outputs.has_devhub == 'true' && !cancelled() && !contains(needs.*.result, 'failure')
     # Nested calls must name the repo and ref in full; keep this in step with the release branch.
