@@ -1,6 +1,8 @@
-# AIAssist-CICD
+# LoomConnectAI-CICD
 
-Shared GitHub Actions workflows for the [AIAssist](https://github.com/cstuart-loomconnect/AIAssist) Salesforce package. The package repo keeps only thin caller workflows; everything that actually runs lives here.
+Shared GitHub Actions workflows for the [LoomConnectAI](https://github.com/cstuart-loomconnect/LoomConnectAI) Salesforce package. The package repo keeps only thin caller workflows; everything that actually runs lives here.
+
+This repo was called `AIAssist-CICD`, and the package repo `AIAssist`, until the product was renamed from AI Assist to LoomConnect AI. GitHub redirects the old URLs, but every `uses:` and `repository:` reference should use the new names.
 
 ## What is in here
 
@@ -31,13 +33,13 @@ Each reusable workflow checks out the calling repo at the root and this repo int
 ## How the package repo calls it
 
 ```yaml
-# AIAssist: .github/workflows/pr-validation.yml
+# LoomConnectAI: .github/workflows/pr-validation.yml
 on:
   pull_request:
     branches: [development, master]
 jobs:
   validate:
-    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/pr-validation.yml@master
+    uses: cstuart-loomconnect/LoomConnectAI-CICD/.github/workflows/pr-validation.yml@master
     with:
       cicd-ref: master
     secrets: inherit
@@ -52,7 +54,7 @@ PR validation and the weekly build already run the browser tests in the same scr
 ```yaml
 jobs:
   browser-tests:
-    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@master
+    uses: cstuart-loomconnect/LoomConnectAI-CICD/.github/workflows/scratch-org-tests.yml@master
     with:
       cicd-ref: master
       apex-tests: false
@@ -61,25 +63,25 @@ jobs:
 
 ## Branches and releasing a change
 
-Callers in AIAssist use `@master`, so `master` is the released version and anything merged into it is live for AIAssist straight away. `development` is where changes land first.
+Callers in LoomConnectAI use `@master`, so `master` is the released version and anything merged into it is live for LoomConnectAI straight away. `development` is where changes land first.
 
 1. Branch from `development`, open a PR into `development` and merge it once `self-check` passes.
 2. Release by opening a PR from `development` into `master` and merging it.
-3. For a breaking change (a new required input or secret, a renamed workflow), update the callers in AIAssist in step with the merge into `master`. The nested `scratch-org-tests.yml@master` references inside `pr-validation.yml` and `weekly-build.yml` also always load from `master`, so test a change to `scratch-org-tests.yml` from a feature branch by pointing those at that branch temporarily.
+3. For a breaking change (a new required input or secret, a renamed workflow), update the callers in LoomConnectAI in step with the merge into `master`. The nested `scratch-org-tests.yml@master` references inside `pr-validation.yml` and `weekly-build.yml` also always load from `master`, so test a change to `scratch-org-tests.yml` from a feature branch by pointing those at that branch temporarily.
 
 ## One-off setup
 
-- **Visibility.** A public repo can only call reusable workflows from a public repo. AIAssist is public, so this repo must be public too. If you make AIAssist private, this one can be private as well; then go to **Settings > Actions > General > Access** here and allow access from your other repositories.
-- **Secret.** The scratch org jobs need `DEVHUB_SFDX_AUTH_URL` in the **calling** repo (AIAssist), created with `sf org auth show-sfdx-auth-url --target-org <devhub> --no-prompt`. Callers pass it with `secrets: inherit`.
-- **Required checks.** To block merges on failures, add the PR Validation jobs as required status checks in AIAssist's branch protection for `development` and `master`.
+- **Visibility.** LoomConnectAI is private, and a private repo can call reusable workflows from this public one. To make this repo private as well, go to **Settings > Actions > General > Access** here and allow access from repositories owned by `cstuart-loomconnect`, or LoomConnectAI's checks stop running. If LoomConnectAI is ever made public again, this repo has to be public too.
+- **Secret.** The scratch org jobs need `DEVHUB_SFDX_AUTH_URL` in the **calling** repo (LoomConnectAI), created with `sf org auth show-sfdx-auth-url --target-org <devhub> --no-prompt`. Callers pass it with `secrets: inherit`.
+- **Required checks.** To block merges on failures, add the PR Validation jobs as required status checks in LoomConnectAI's branch protection for `development` and `master`.
 
 ## Running the checks locally
 
-Clone this repo next to AIAssist, then from the AIAssist folder:
+Clone this repo next to LoomConnectAI, then from the LoomConnectAI folder:
 
 ```bash
-node ../AIAssist-CICD/scripts/check-naming.js force-app ../AIAssist-CICD/config/naming-exceptions.txt
-node ../AIAssist-CICD/scripts/check-api-version.js force-app sfdx-project.json
-node ../AIAssist-CICD/scripts/check-hardcoded.js force-app ../AIAssist-CICD/config/hardcoded-exceptions.txt
-sf code-analyzer run --workspace force-app --config-file ../AIAssist-CICD/config/code-analyzer.yml --rule-selector Recommended
+node ../LoomConnectAI-CICD/scripts/check-naming.js force-app ../LoomConnectAI-CICD/config/naming-exceptions.txt
+node ../LoomConnectAI-CICD/scripts/check-api-version.js force-app sfdx-project.json
+node ../LoomConnectAI-CICD/scripts/check-hardcoded.js force-app ../LoomConnectAI-CICD/config/hardcoded-exceptions.txt
+sf code-analyzer run --workspace force-app --config-file ../LoomConnectAI-CICD/config/code-analyzer.yml --rule-selector Recommended
 ```

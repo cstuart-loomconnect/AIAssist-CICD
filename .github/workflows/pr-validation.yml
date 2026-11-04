@@ -8,7 +8,7 @@ name: PR Validation
 # Call it from the package repo:
 #   jobs:
 #     validate:
-#       uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/pr-validation.yml@master
+#       uses: cstuart-loomconnect/LoomConnectAI-CICD/.github/workflows/pr-validation.yml@master
 #       with:
 #         cicd-ref: master
 #       secrets: inherit
@@ -23,7 +23,7 @@ on:
   workflow_call:
     inputs:
       cicd-ref:
-        description: Ref of AIAssist-CICD to load scripts and config from. Keep it the same as the @ref in `uses:`.
+        description: Ref of LoomConnectAI-CICD to load scripts and config from. Keep it the same as the @ref in `uses:`.
         type: string
         default: master
       source-dir:
@@ -47,7 +47,7 @@ permissions:
   contents: read
 
 env:
-  CICD_REPO: cstuart-loomconnect/AIAssist-CICD
+  CICD_REPO: cstuart-loomconnect/LoomConnectAI-CICD
   SLDS_LINTER_VERSION: 1.2.1
 
 jobs:
@@ -253,7 +253,7 @@ jobs:
     # Skip if a prerequisite was skipped for lack of source, or no Dev Hub login was passed in; fail if one failed.
     if: needs.detect.outputs.has_apex == 'true' && needs.detect.outputs.has_devhub == 'true' && !cancelled() && !contains(needs.*.result, 'failure')
     # Nested calls must name the repo and ref in full; keep this in step with the release branch.
-    uses: cstuart-loomconnect/AIAssist-CICD/.github/workflows/scratch-org-tests.yml@master
+    uses: cstuart-loomconnect/LoomConnectAI-CICD/.github/workflows/scratch-org-tests.yml@master
     with:
       cicd-ref: ${{ inputs.cicd-ref }}
       source-dir: ${{ inputs.source-dir }}
