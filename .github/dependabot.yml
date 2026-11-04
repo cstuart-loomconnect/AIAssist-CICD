@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # The action versions every AIAssist pull request runs on (checkout, setup-node, setup-java, setup-python,
+  # The action versions every LoomConnectAI pull request runs on (checkout, setup-node, setup-java, setup-python,
   # upload-artifact, github-script) live in this repo, so Dependabot keeps them up to date here.
   # Monthly and grouped into one PR. Updates land on development and reach callers when merged into master.
   - package-ecosystem: github-actions
