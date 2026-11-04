@@ -12,7 +12,7 @@ on:
         type: string
         default: ''
       cicd-ref:
-        description: Ref of AIAssist-CICD to load scripts from
+        description: Ref of LoomConnectAI-CICD to load scripts from
         type: string
         default: master
       source-dir:
@@ -52,7 +52,7 @@ jobs:
           ref: ${{ inputs.ref }}
       - uses: actions/checkout@v7
         with:
-          repository: cstuart-loomconnect/AIAssist-CICD
+          repository: cstuart-loomconnect/LoomConnectAI-CICD
           ref: ${{ inputs.cicd-ref }}
           path: .cicd
       - uses: actions/setup-node@v7
