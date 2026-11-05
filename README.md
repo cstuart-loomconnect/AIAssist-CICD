@@ -2,7 +2,7 @@
 
 Shared GitHub Actions workflows for the [LoomConnectAI](https://github.com/cstuart-loomconnect/LoomConnectAI) Salesforce package. The package repo keeps only thin caller workflows; everything that actually runs lives here.
 
-This repo was called `AIAssist-CICD`, and the package repo `AIAssist`, until the product was renamed from AI Assist to LoomConnect AI. GitHub redirects the old URLs, but every `uses:` and `repository:` reference should use the new names.
+Every `uses:` and `repository:` reference should use the `LoomConnectAI` and `LoomConnectAI-CICD` repo names.
 
 ## What is in here
 
